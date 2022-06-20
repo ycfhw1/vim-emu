@@ -261,7 +261,7 @@ class UpbSimpleCloudDcRM(BaseResourceModel):
         r["mem_op_factor"] = self.mem_op_factor
         r["allocation_state"] = allocation_state
         return r
-
+    #flavor(风味)
     def _get_flavor(self, d):
         """
         Get flavor assigned to given container.

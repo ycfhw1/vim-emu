@@ -128,7 +128,9 @@ class DrawD3jsgraph(Resource):
         links = list()
         # add all DCs
         node_attr = networkx.get_node_attributes(net.DCNetwork_graph, 'type')
+        print(str(Resource))
         for node_name in net.DCNetwork_graph.nodes():
+            print(node_name)
             nodes2.append(node_name)
             type = node_attr[node_name]
             node_dict = {"name": node_name, "group": type}

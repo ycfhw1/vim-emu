@@ -27,6 +27,7 @@ from mininet.node import Docker
 from mininet.link import Link
 from emuvim.dcemulator.resourcemodel import NotEnoughResourcesAvailable
 import logging
+import os
 
 
 LOG = logging.getLogger("dcemulator.node")
@@ -49,6 +50,7 @@ class EmulatorCompute(Docker):
     def __init__(
             self, name, dimage, **kwargs):
         self.datacenter = kwargs.get("datacenter")  # pointer to current DC
+        #flavor:image
         self.flavor_name = kwargs.get("flavor_name")
         self._network_state_cache = None
         LOG.debug("Starting compute instance %r in data center %r" %

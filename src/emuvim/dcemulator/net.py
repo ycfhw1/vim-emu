@@ -615,7 +615,6 @@ class DCNetwork(Containernet):
 
     def _chainAddFlow(self, vnf_src_name, vnf_dst_name,
                       vnf_src_interface=None, vnf_dst_interface=None, **kwargs):
-
         src_sw = None
         src_sw_inport_nr = 0
         src_sw_inport_name = None
@@ -668,8 +667,7 @@ class DCNetwork(Containernet):
             try:
                 # returns the first found shortest path
                 # if all shortest paths are wanted, use: all_shortest_paths
-                path = nx.shortest_path(
-                    self.DCNetwork_graph, src_sw, dst_sw, weight=kwargs.get('weight'))
+                path = nx.shortest_path(self.DCNetwork_graph, src_sw, dst_sw, weight=kwargs.get('weight'))
             except BaseException:
                 LOG.exception("No path could be found between {0} and {1} using src_sw={2} and dst_sw={3}".format(
                     vnf_src_name, vnf_dst_name, src_sw, dst_sw))
@@ -1025,3 +1023,4 @@ class DCNetwork(Containernet):
                     # found the right link and connected switch
                     src_sw_inport_name = link_dict[link]['dst_port_name']
                     return src_sw_inport_name
+    

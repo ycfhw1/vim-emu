@@ -47,6 +47,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         match = parser.OFPMatch()
         # actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
         #                                  ofproto.OFPCML_NO_BUFFER)]
+        #table-miss的特定消息
         actions = [parser.OFPActionOutput(ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
 
@@ -76,6 +77,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         self.logger.info('OF version: {0}'.format(ofproto))
         # send NORMAL action for all undefined flows
         ofp_parser = datapath.ofproto_parser
+        #OFPP_NORMAL：通过正常的 L2 / L3 传统交换机配置进行处理（如果可用的话，取决于交换机）；
         actions = [ofp_parser.OFPActionOutput(ofproto_v1_3.OFPP_NORMAL)]
         self.add_flow(datapath, 0, None, actions, table_id=0)
 

@@ -137,7 +137,7 @@ class Compute(Resource):
         # TODO make this more robust with regex check
         if network_str is None:
             return nw_list
-
+        #nw :network
         networks = network_str[1:-1].split('),(')
         for nw in networks:
             nw_dict = dict(tuple(e.split('=')) for e in nw.split(','))

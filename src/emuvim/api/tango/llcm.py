@@ -128,6 +128,7 @@ class Gatekeeper(object):
         :param service_uuid
         :param service object
         """
+        #service_uuid
         self.services[service_uuid] = service
         # lets perform all steps needed to onboard the service
         service.onboard()
@@ -157,7 +158,7 @@ class Service(object):
         self.instances = dict()
         self._instance_counter = 0
         self.created_at = str(datetime.datetime.now())
-
+    #上线服务
     def onboard(self):
         """
         Do all steps to prepare this service to be instantiated
@@ -177,6 +178,7 @@ class Service(object):
         if BUILD_DOCKERFILE:
             self._load_docker_files()
             self._build_images_from_dockerfiles()
+        #拉取docker镜像
         else:
             self._load_docker_urls()
             self._pull_predefined_dockerimages()
@@ -204,8 +206,10 @@ class Service(object):
         instance_uuid = str(uuid.uuid4())
         # build a instances dict (a bit like a NSR :))
         self.instances[instance_uuid] = dict()
+        #instance对象，这样可以避免了名字重复问题
         self.instances[instance_uuid]["uuid"] = self.uuid
         # SSIID = short service instance ID (to postfix Container names)
+        #SSIID 短服务id
         self.instances[instance_uuid]["ssiid"] = self._instance_counter
         self.instances[instance_uuid]["name"] = get_triple_id(self.nsd)
         self.instances[instance_uuid]["vnf_instances"] = list()
@@ -228,6 +232,7 @@ class Service(object):
         # Attention2: Do a copy of *_subnets with list() is important here!
         eline_fwd_links, elan_fwd_links = self._get_elines_and_elans()
         # 5a. deploy E-Line links
+        #计算部署的eline和elan
         GK.net.deployed_elines.extend(eline_fwd_links)  # bookkeeping
         self._connect_elines(eline_fwd_links, instance_uuid, list(self.eline_subnets))
         # 5b. deploy E-Tree/E-LAN links
@@ -236,6 +241,7 @@ class Service(object):
 
         # 6. run the emulator specific entrypoint scripts in the VNFIs of this
         # service instance
+        #开启服务实例
         self._trigger_emulator_start_scripts_in_vnfis(
             self.instances[instance_uuid]["vnf_instances"])
         # done
@@ -244,7 +250,7 @@ class Service(object):
                          instance_uuid,
                          self.instances[instance_uuid]["ssiid"]))
         return instance_uuid
-
+    #stop_service,
     def stop_service(self, instance_uuid):
         """
         This method stops a running service instance.
@@ -265,7 +271,7 @@ class Service(object):
             self._stop_vnfi(v)
         # last step: remove the instance from the list of all instances
         del self.instances[instance_uuid]
-
+    #获取有向边类型
     def _get_elines_and_elans(self):
         """
         Get the E-Line, E-LAN, E-Tree links from the NSD.
@@ -274,6 +280,7 @@ class Service(object):
         # even if "forwarding_graphs" are not used directly.
         eline_fwd_links = list()
         elan_fwd_links = list()
+        #三种类型的边，E-LINE（点到点业务，是指客户有两个UNI接入点，彼此之间是双向互通的关系），E-LAN（以太多播传送业务），E-TREE
         if "virtual_links" in self.nsd and "forwarding_graphs" in self.nsd:
             vlinks = self.nsd["virtual_links"]
             # constituent virtual links are not checked
@@ -484,7 +491,7 @@ class Service(object):
                 return vnfi
         LOG.warning("No container with name: {0} found.".format(vnf_id))
         return None
-
+    #对应于一个vnf多个实例的情况，self.instances代表当前所有被部署的实例
     def _get_vnf_instance_units(self, instance_uuid, vnf_id):
         """
         Returns a list of VNFI objects (all deployment units) for a given
@@ -524,7 +531,7 @@ class Service(object):
             else:
                 LOG.warning("Interface not found: %s:%s. Network reconfiguration skipped." % (
                     vnfi.name, if_name))
-
+        #设置一个网口，为一个网口设置一个新地指
         if new_name is not None:
             vnfi.cmd('ip link set', if_name, 'down')
             vnfi.cmd('ip link set', if_name, 'name', new_name)
@@ -547,7 +554,7 @@ class Service(object):
                     t.daemon = True
                     t.start()
                     break  # only execute one command
-
+    #执行docker的stop.sh脚本
     def _trigger_emulator_stop_scripts_in_vnfis(self, vnfi_list):
         for vnfi in vnfi_list:
             config = vnfi.dcinfo.get("Config", dict())
@@ -600,7 +607,7 @@ class Service(object):
         self.manifest = load_yaml(
             os.path.join(
                 self.package_content_path, "TOSCA-Metadata/NAPD.yaml"))
-
+    #读取network service descriptor
     def _load_nsd(self):
         """
         Load the entry NSD YAML and keep it as dict.
@@ -623,7 +630,7 @@ class Service(object):
             raise OnBoardingException(
                 "No 'package_content' section in package manifest:\n{}"
                 .format(self.manifest))
-
+    #读取vnf descriptor
     def _load_vnfd(self):
         """
         Load all VNFD YAML files referenced in MANIFEST.MF and keep them in dict.
@@ -670,6 +677,7 @@ class Service(object):
             LOG.info("Searching C/VDU for E-Line: src={}, src_if={}, dst={}, dst_if={}"
                      .format(src_id, src_if_name, dst_id, dst_if_name))
             # handle C/VDUs (ugly hack, only one V/CDU per VNF for now)
+            #先找实例，起始节点
             src_units = self._get_vnf_instance_units(instance_uuid, src_id)
             dst_units = self._get_vnf_instance_units(instance_uuid, dst_id)
             if src_units is None or dst_units is None:
@@ -717,7 +725,7 @@ class Service(object):
                     src_id, dst_id,
                     vnf_src_interface=src_if_name, vnf_dst_interface=dst_if_name,
                     bidirectional=BIDIRECTIONAL_CHAIN, cmd="add-flow", cookie=cookie, priority=10)
-
+    #vnfd的连接点
     def _get_vnfd_cp_from_vnfi(self, vnfi, ifname):
         """
         Gets the connection point data structure from the VNFD
@@ -900,7 +908,7 @@ class Service(object):
         rdc = p.place(GK.dcs, vnfd, vnfid, vdu, ssiid, cname)
         LOG.info("Placement: '{}' --> '{}'".format(cname, rdc))
         return rdc
-
+    #计算CPU用量
     def _calculate_cpu_cfs_values(self, cpu_time_percentage):
         """
         Calculate cpu period and quota for CFS
@@ -1110,7 +1118,7 @@ class Services(fr.Resource):
             result.append(service)
         return result, 200, CORS_HEADER
 
-
+#实例化一个服务
 class Instantiations(fr.Resource):
 
     def post(self):
@@ -1281,7 +1289,7 @@ def ensure_dir(name):
 def load_yaml(path):
     with open(path, "r") as f:
         try:
-            r = yaml.load(f)
+            r = yaml.load(f,yaml.SafeLoader)
         except yaml.YAMLError as exc:
             LOG.exception("YAML parse error: %r" % str(exc))
             r = dict()
@@ -1325,7 +1333,7 @@ def get_container_name(vnf_id, vdu_id, ssiid=None):
         return "{}.{}.{}".format(vnf_id, vdu_id, ssiid)
     return "{}.{}".format(vnf_id, vdu_id)
 
-
+#desc：是文件描述，.tgo文件
 def get_triple_id(descr):
     return "{}.{}.{}".format(
         descr.get("vendor"), descr.get("name"), descr.get("version"))
