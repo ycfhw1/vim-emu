@@ -60,7 +60,7 @@ GK_STANDALONE_MODE = False
 
 # should a new version of an image be pulled even if its available
 FORCE_PULL = False
-
+#看清楚了SAPs (endpoints) of the service
 # Automatically deploy SAPs (endpoints) of the service as new containers
 # Attention: This is not a configuration switch but a global variable!
 # Don't change its default value.
@@ -376,6 +376,7 @@ class Service(object):
                 vnf_id,
                 network=intfs,
                 image=docker_name,
+                #flavor:模板
                 flavor_name="small",
                 cpu_quota=cpu_quota,
                 cpu_period=cpu_period,

@@ -190,7 +190,7 @@ class DCNetwork(Containernet):
 
         link = Containernet.addLink(self, node1, node2, **params)
 
-        # try to give container interfaces a default id
+        # try to give container interfaces a default id(给予容器接口一个默认id)。对应于下面的port_id和port_name
         node1_port_id = node1.ports[link.intf1]
         if isinstance(node1, Docker):
             if "id" in params["params1"]:
@@ -219,7 +219,7 @@ class DCNetwork(Containernet):
             else:
                 attr_number = None
             attr_dict[attr] = attr_number
-
+        #port_nr代表的是在ovs上的接口号，而src_node_id代表的是eth0，eth1，eth2这样的接口号，如果是dc，两者一致，如果是Docker容器两者不一致
         attr_dict2 = {'src_port_id': node1_port_id, 'src_port_nr': node1.ports[link.intf1],
                       'src_port_name': node1_port_name,
                       'dst_port_id': node2_port_id, 'dst_port_nr': node2.ports[link.intf2],
@@ -277,12 +277,13 @@ class DCNetwork(Containernet):
         """
         self.DCNetwork_graph.remove_node(label)
         return Containernet.removeDocker(self, label, **params)
-
+    #SAP:service access point!!!!!!!!!!!
     def addExtSAP(self, sap_name, sap_ip, **params):
         """
+        SAP:SWITCH ACCESS POINT
         Wrapper for addExtSAP method to store SAP  also in graph.
         """
-        # make sure that 'type' is set
+        # make sure that 'type' is set,很奇怪，元祖是用get方法进行设置的吗
         params['type'] = params.get('type', 'sap_ext')
         self.DCNetwork_graph.add_node(sap_name, type=params['type'])
         return Containernet.addExtSAP(self, sap_name, sap_ip, **params)
@@ -348,6 +349,7 @@ class DCNetwork(Containernet):
     def setLAN(self, vnf_list):
         """
         setup an E-LAN network by assigning the same VLAN tag to each DC interface of the VNFs in the E-LAN
+        通过为 E-LAN 中 VNF 的每个 DC 接口分配相同的 VLAN 标签来设置 E-LAN 网络
 
         :param vnf_list: names of the VNFs in this E-LAN  [{name:,interface:},...]
         :return:
@@ -366,7 +368,9 @@ class DCNetwork(Containernet):
             if vnf_src_interface is None:
                 # take first interface by default
                 connected_sw = self.DCNetwork_graph.neighbors(vnf_src_name)[0]
+                #交换机和vnf之间的链路信息
                 link_dict = self.DCNetwork_graph[vnf_src_name][connected_sw]
+                #vnf上的接口
                 vnf_src_interface = link_dict[0]['src_port_id']
 
             for connected_sw in self.DCNetwork_graph.neighbors(vnf_src_name):
@@ -762,7 +766,7 @@ class DCNetwork(Containernet):
                  .format(vnf_src_name, vnf_src_interface, vnf_dst_name, vnf_dst_interface, flow_options))
         return "success: {2} between {0} and {1} with options: {3}".format(
             vnf_src_name, vnf_dst_name, cmd, flow_options_str)
-
+    #这个负责具体操作，具体添加流表象
     def _set_flow_entry_ryu_rest(
             self, node, switch_inport_nr, switch_outport_nr, **kwargs):
         match = 'in_port=%s' % switch_inport_nr

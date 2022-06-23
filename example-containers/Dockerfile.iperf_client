@@ -1,0 +1,18 @@
+# parent image
+FROM ubuntu:xenial
+RUN sed -i s/archive.ubuntu.com/mirrors.aliyun.com/g /etc/apt/sources.list \
+&& sed -i s/security.ubuntu.com/mirrors.aliyun.com/g /etc/apt/sources.list
+# install needed packages
+RUN apt-get update && apt-get install -y \
+    net-tools \
+    iputils-ping \
+    iproute2 \
+    telnet telnetd \
+    iperf
+
+
+# set entry point for emulator gatekeeper
+ENV VIM_EMU_CMD "echo 'Client started'"
+
+# run bash interpreter
+CMD /bin/bash

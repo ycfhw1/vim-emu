@@ -80,6 +80,7 @@ USE_DOCKER_MGMT = False
 
 # automatically deploy uploaded packages (no need to execute son-access
 # deploy --latest separately)
+#这里设置了手动部署
 AUTO_DEPLOY = False
 
 # and also automatically terminate any other running services
@@ -145,6 +146,7 @@ class Service(object):
                  service_uuid,
                  package_file_hash,
                  package_file_path):
+        #uuid就是上线的时候那个service_uuid
         self.uuid = service_uuid
         self.package_file_hash = package_file_hash
         self.package_file_path = package_file_path
@@ -190,7 +192,7 @@ class Service(object):
                   .format(self.manifest.get("name"),
                           self.eline_subnets, self.elan_subnets))
         LOG.info("On-boarded service: {}".format(self.manifest.get("name")))
-
+    #这个开启了服务
     def start_service(self):
         """
         This methods creates and starts a new service instance.
@@ -199,6 +201,8 @@ class Service(object):
         by the placement algorithm.
         :return:
         """
+        #get_triple_id这个文件用于获取service file名称，de.upb.ns....,用于查询一个特定上线服务的（service_instance_uuid）的实例
+        #因此并没有解决vnf重名的这个问题
         LOG.info("Starting service {} ({})"
                  .format(get_triple_id(self.nsd), self.uuid))
 
@@ -250,7 +254,7 @@ class Service(object):
                          instance_uuid,
                          self.instances[instance_uuid]["ssiid"]))
         return instance_uuid
-    #stop_service,
+    #stop_service,停止服务，移除VNF实例
     def stop_service(self, instance_uuid):
         """
         This method stops a running service instance.
@@ -326,6 +330,7 @@ class Service(object):
         return cpu_list, cpu_period, cpu_quota, mem_limit
 
     def _start_vnfd(self, vnfd, vnf_id, ssiid, **kwargs):
+        #开启一个VNF实例
         """
         Start a single VNFD of this service
         :param vnfd: vnfd descriptor dict
@@ -340,10 +345,10 @@ class Service(object):
                             vnfd.get("cloudnative_deployment_units", []))
         # iterate over all deployment units within each VNFDs
         for u in deployment_units:
-            # 0. vnf_container_name = vnf_id.vdu_id
+            # 0. vnf_container_name = vnf_id.vdu_id,vnf名+vdu名称
             vnf_container_name = get_container_name(vnf_id, u.get("id"))
             vnf_container_instance_name = get_container_name(vnf_id, u.get("id"), ssiid)
-            # 1. get the name of the docker image to star
+            # 1. get the name of the docker image to start
             if vnf_container_name not in self.remote_docker_image_urls:
                 raise Exception("No image name for %r found. Abort." % vnf_container_name)
             docker_image_name = self.remote_docker_image_urls.get(vnf_container_name)
@@ -501,6 +506,7 @@ class Service(object):
         if vnf_id is None:
             return None
         r = list()
+        #vnf_id应该是名称的id，比如vnf_web对应1，vnf_user对应2，但是instance_uuid对应实例id，vnf_web1，vnf_web2
         for vnfi in self.instances[instance_uuid]["vnf_instances"]:
             if vnf_id in vnfi.name:
                 r.append(vnfi)
@@ -538,7 +544,7 @@ class Service(object):
             vnfi.cmd('ip link set', new_name, 'up')
             LOG.debug("Reconfigured interface name of %s:%s to %s" %
                       (vnfi.name, if_name, new_name))
-
+    #start start.sh
     def _trigger_emulator_start_scripts_in_vnfis(self, vnfi_list):
         for vnfi in vnfi_list:
             config = vnfi.dcinfo.get("Config", dict())
@@ -598,7 +604,7 @@ class Service(object):
         LOG.info("Unzipping: %r" % self.package_file_path)
         with zipfile.ZipFile(self.package_file_path, "r") as z:
             z.extractall(self.package_content_path)
-
+    #NAPD.yaml package要是这个文件格式
     def _load_package_descriptor(self):
         """
         Load the main package descriptor YAML and keep it as dict.
@@ -607,6 +613,8 @@ class Service(object):
         self.manifest = load_yaml(
             os.path.join(
                 self.package_content_path, "TOSCA-Metadata/NAPD.yaml"))
+        LOG.info("package_descriptor")
+        LOG.info(self.manifest)
     #读取network service descriptor
     def _load_nsd(self):
         """
@@ -670,6 +678,7 @@ class Service(object):
         cookie = 1
         for link in eline_fwd_links:
             LOG.info("Found E-Line: {}".format(link))
+            #获取vnf名称和接口
             src_id, src_if_name = parse_interface(
                 link["connection_points_reference"][0])
             dst_id, dst_if_name = parse_interface(
@@ -678,8 +687,17 @@ class Service(object):
                      .format(src_id, src_if_name, dst_id, dst_if_name))
             # handle C/VDUs (ugly hack, only one V/CDU per VNF for now)
             #先找实例，起始节点
+            #SAP的英文全称是“Service Access Point”
             src_units = self._get_vnf_instance_units(instance_uuid, src_id)
             dst_units = self._get_vnf_instance_units(instance_uuid, dst_id)
+            #这里之所以需要手动为llcm配置路由，肯定是这里程序写出问题了，看日志
+            '''
+            INFO:5gtango.llcm:Found E-Line: {'id': 'input-2-vnf0', 'connectivity_type': 'E-Line', 'connection_points_reference': ['input', 'vnf0:input']}
+INFO:5gtango.llcm:Searching C/VDU for E-Line: src=None, src_if=input, dst=vnf0, dst_if=input
+DEBUG:5gtango.llcm:Found units: ['vnf0.vdu01.0'] for vnf_id: vnf0
+INFO:5gtango.llcm:No VNF-VNF link. Skipping: src=None, src_if=input, dst=vnf0, dst_if=input
+        这里的No VNF-VNF肯定是有问题的
+            '''
             if src_units is None or dst_units is None:
                 LOG.info("No VNF-VNF link. Skipping: src={}, src_if={}, dst={}, dst_if={}"
                          .format(src_id, src_if_name, dst_id, dst_if_name))
@@ -1006,7 +1024,7 @@ class StaticConfigPlacement(object):
 Resource definitions and API endpoints
 """
 
-
+#上线package的时候分配给的是service_uuid,实例化的是分配给的service_instance_uuid
 class Packages(fr.Resource):
 
     def post(self):
@@ -1118,7 +1136,7 @@ class Services(fr.Resource):
             result.append(service)
         return result, 200, CORS_HEADER
 
-#实例化一个服务
+#实例化一个服务,flask应用，由于接受到了flask代过来的路由，所以调用到了这里
 class Instantiations(fr.Resource):
 
     def post(self):
@@ -1220,7 +1238,7 @@ class Exit(fr.Resource):
         """
         list(GK.dcs.values())[0].net.stop()
 
-
+#生成子网对象
 def generate_subnets(prefix, base, subnet_size=50, mask=24):
     # Generate a list of ipaddress in subnets
     r = list()
@@ -1320,8 +1338,9 @@ def parse_interface(interface_name):
     :param interface_name:
     :return:
     """
-    if ':' in interface_name:
-        vnf_id, vnf_interface = interface_name.split(':')
+    #yaml文件有问题的，肯定不用自己手动上线网络的，要不然要这些代码逻辑有个皮用,vnf0:mgmt，vnf_id就是vnf0这些的vnf_interface是mgmt，没有考虑到多个节点重名？
+    if ":" in interface_name:
+        vnf_id, vnf_interface = interface_name.split(":")
     else:
         vnf_id = None
         vnf_interface = interface_name
